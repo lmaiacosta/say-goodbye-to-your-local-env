@@ -4,29 +4,219 @@ on:
   push:
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        default: 'v2.0.0'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.21'
+        cache: true
 
-    - name: Build for all platforms
-      run: make build-all
+    - name: Get version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build binaries
+      run: |
+        mkdir -p build
+        VERSION=${{ steps.version.outputs.VERSION }}
+
+        # Build for all platforms
+        echo "🔨 Building Envault ${VERSION} for all platforms..."
+
+        # Linux
+        echo "📦 Building for Linux..."
+        GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-linux-amd64 .
+        GOOS=linux GOARCH=arm64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-linux-arm64 .
+
+        # Windows
+        echo "📦 Building for Windows..."
+        GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-windows-amd64.exe .
+        GOOS=windows GOARCH=arm64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-windows-arm64.exe .
+
+        # macOS
+        echo "📦 Building for macOS..."
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-darwin-amd64 .
+        GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${VERSION}" -o build/envault-darwin-arm64 .
+
+        # Make binaries executable
+        chmod +x build/envault-*
+
+        # List built files
+        echo "✅ Built binaries:"
+        ls -la build/
+
+    - name: Generate checksums
+      run: |
+        cd build
+        sha256sum * > checksums.txt
+        echo "📋 Generated checksums:"
+        cat checksums.txt
+
+    - name: Create installation script
+      run: |
+        cat > install.sh << 'EOF'
+        #!/bin/bash
+        # Envault Installation Script
+        # curl -sSL https://raw.githubusercontent.com/lmaiacosta/say-goodbye-to-your-local-env/main/install.sh | bash
+
+        set -e
+
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        BINARY_NAME="envault"
+        INSTALL_DIR="/usr/local/bin"
+
+        # Colors
+        RED='\033[0;31m'
+        GREEN='\033[0;32m'
+        YELLOW='\033[1;33m'
+        BLUE='\033[0;34m'
+        NC='\033[0m'
+
+        echo -e "${BLUE}🚀 Installing Envault ${VERSION}${NC}"
+
+        # Detect OS and architecture
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+
+        case $ARCH in
+            x86_64) ARCH="amd64" ;;
+            aarch64) ARCH="arm64" ;;
+            arm64) ARCH="arm64" ;;
+            *) echo -e "${RED}❌ Unsupported architecture: $ARCH${NC}"; exit 1 ;;
+        esac
+
+        case $OS in
+            linux) OS="linux" ;;
+            darwin) OS="darwin" ;;
+            mingw*|msys*|cygwin*) OS="windows"; BINARY_NAME="envault.exe" ;;
+            *) echo -e "${RED}❌ Unsupported OS: $OS${NC}"; exit 1 ;;
+        esac
+
+        if [[ "$OS" == "windows" ]]; then
+            DOWNLOAD_URL="https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/download/${VERSION}/${BINARY_NAME%.*}-${OS}-${ARCH}.exe"
+        else
+            DOWNLOAD_URL="https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/download/${VERSION}/${BINARY_NAME}-${OS}-${ARCH}"
+        fi
+
+        echo -e "${YELLOW}📦 Downloading ${BINARY_NAME} for ${OS}/${ARCH}...${NC}"
+        echo -e "${BLUE}🔗 URL: ${DOWNLOAD_URL}${NC}"
+
+        # Create temporary file
+        TMP_FILE=$(mktemp)
+        trap "rm -f $TMP_FILE" EXIT
+
+        # Download binary
+        if ! curl -sSL "$DOWNLOAD_URL" -o "$TMP_FILE"; then
+            echo -e "${RED}❌ Download failed. Please check the URL and your internet connection.${NC}"
+            exit 1
+        fi
+
+        # Make executable
+        chmod +x "$TMP_FILE"
+
+        # Install to system
+        if [[ "$OS" == "windows" ]]; then
+            # For Windows, try to install to a location in PATH
+            if [ -d "/c/Windows/System32" ]; then
+                echo -e "${YELLOW}📋 Installing to /c/Windows/System32 (requires admin)${NC}"
+                cp "$TMP_FILE" "/c/Windows/System32/$BINARY_NAME"
+            else
+                echo -e "${YELLOW}📋 Installing to current directory${NC}"
+                cp "$TMP_FILE" "./$BINARY_NAME"
+            fi
+        else
+            if [ -w "$INSTALL_DIR" ]; then
+                mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
+            else
+                echo -e "${YELLOW}📋 Installing to $INSTALL_DIR (requires sudo)${NC}"
+                sudo mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
+            fi
+        fi
+
+        echo -e "${GREEN}✅ Envault installed successfully!${NC}"
+        echo -e "${BLUE}💡 Usage: envault -f .env -r owner/repo -e production${NC}"
+        echo -e "${BLUE}📖 Run 'envault --help' for more options${NC}"
+
+        # Verify installation
+        if command -v envault >/dev/null 2>&1; then
+            echo -e "${GREEN}🎉 Installation verified!${NC}"
+            envault --version
+        else
+            echo -e "${YELLOW}⚠️  You may need to add the installation directory to your PATH${NC}"
+        fi
+        EOF
+
+        chmod +x install.sh
 
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
       with:
-        files: build/*
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: "Envault ${{ steps.version.outputs.VERSION }}"
+        body: |
+          # 🚀 Envault ${{ steps.version.outputs.VERSION }}
+
+          ## 📦 Quick Install
+
+          ### Linux/macOS
+          ```bash
+          curl -sSL https://raw.githubusercontent.com/lmaiacosta/say-goodbye-to-your-local-env/main/install.sh | bash
+          ```
+
+          ### Manual Download
+          Download the appropriate binary for your platform from the assets below:
+
+          - **Linux**: `envault-linux-amd64` or `envault-linux-arm64`
+          - **Windows**: `envault-windows-amd64.exe` or `envault-windows-arm64.exe`
+          - **macOS**: `envault-darwin-amd64` or `envault-darwin-arm64`
+
+          ## 🎯 Usage
+          ```bash
+          # Basic usage
+          envault -f .env -r owner/repo -e production
+
+          # Preview mode
+          envault -f .env --dry-run
+
+          # Auto-classify
+          envault -f .env --auto
+          ```
+
+          ## 🔐 Prerequisites
+          - [GitHub CLI](https://cli.github.com/) installed and authenticated
+          - Repository access permissions
+
+          ## 📋 Checksums
+          See `checksums.txt` for file integrity verification.
+
+          ---
+          **Made with ❤️ for developers who value security and simplicity**
+        files: |
+          build/*
+          install.sh
         draft: false
         prerelease: false
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
