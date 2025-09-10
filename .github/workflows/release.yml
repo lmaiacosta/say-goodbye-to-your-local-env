@@ -5,78 +5,171 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v2.1.0)'
+        required: true
+        default: 'v2.0.1'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.21'
+        cache: true
 
-    - name: Build binaries
+    - name: Get version
+      id: version
       run: |
-        mkdir -p dist
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
 
-        # Build for Linux
-        GOOS=linux GOARCH=amd64 go build -o dist/envault-linux-amd64 .
-        GOOS=linux GOARCH=arm64 go build -o dist/envault-linux-arm64 .
+    - name: Build all platforms
+      run: |
+        # Set version for build
+        VERSION=${{ steps.version.outputs.VERSION }}
 
-        # Build for macOS
-        GOOS=darwin GOARCH=amd64 go build -o dist/envault-macos-amd64 .
-        GOOS=darwin GOARCH=arm64 go build -o dist/envault-macos-arm64 .
+        # Use makefile for consistent builds
+        make build-all VERSION=${VERSION}
 
-        # Build for Windows
-        GOOS=windows GOARCH=amd64 go build -o dist/envault-windows-amd64.exe .
-        GOOS=windows GOARCH=arm64 go build -o dist/envault-windows-arm64.exe .
+    - name: Generate checksums
+      run: |
+        cd build
+        sha256sum * > checksums.txt
+        echo "📋 Generated checksums:"
+        cat checksums.txt
+
+    - name: Create installation instructions
+      run: |
+        cat > INSTALL.md << 'EOF'
+        # 🚀 Envault Installation Guide
+
+        ## Quick Install Commands
+
+        ### Linux (Intel/AMD64)
+        ```bash
+        curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-amd64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+        ```
+
+        ### Linux (ARM64)
+        ```bash
+        curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-arm64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+        ```
+
+        ### macOS (Intel)
+        ```bash
+        curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-darwin-amd64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+        ```
+
+        ### macOS (Apple Silicon)
+        ```bash
+        curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-darwin-arm64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+        ```
+
+        ### Windows (PowerShell as Admin)
+        ```powershell
+        Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-windows-amd64.exe" -OutFile "$env:ProgramFiles\envault.exe"
+        ```
+
+        ## Test Installation
+        ```bash
+        envault --version
+        ```
+
+        ## Quick Start
+        ```bash
+        # Setup GitHub CLI (one time)
+        gh auth login
+
+        # Upload your .env file
+        envault -f .env -r owner/repo
+        ```
+        EOF
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/*
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: "Envault ${{ steps.version.outputs.VERSION }}"
         body: |
-          ## 🚀 Installation
+          # 🚀 Envault ${{ steps.version.outputs.VERSION }}
 
-          **Linux (Intel/AMD64):**
+          **Upload .env files to GitHub Actions Secrets in one command**
+
+          ## ⚡ Quick Install
+
+          ### Linux/macOS (Copy & Paste)
           ```bash
-          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-amd64 -o envault
-          chmod +x envault
-          sudo mv envault /usr/local/bin/
+          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/') -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
           ```
 
-          **Linux (ARM64):**
-          ```bash
-          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-arm64 -o envault
-          chmod +x envault
-          sudo mv envault /usr/local/bin/
-          ```
-
-          **macOS (Intel):**
-          ```bash
-          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-macos-amd64 -o envault
-          chmod +x envault
-          sudo mv envault /usr/local/bin/
-          ```
-
-          **macOS (Apple Silicon):**
-          ```bash
-          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-macos-arm64 -o envault
-          chmod +x envault
-          sudo mv envault /usr/local/bin/
-          ```
-
-          **Windows (PowerShell):**
+          ### Windows (PowerShell as Admin)
           ```powershell
-          Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-windows-amd64.exe" -OutFile "envault.exe"
-          # Move to a directory in your PATH
+          Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-windows-amd64.exe" -OutFile "$env:ProgramFiles\envault.exe"
           ```
 
           ## 🎯 Usage
+
           ```bash
+          # Setup (one time)
+          gh auth login
+
+          # Upload .env file
           envault -f .env -r owner/repo
+
+          # Preview first
+          envault -f .env --dry-run
+
+          # Auto-classify variables
+          envault -f .env --auto
           ```
+
+          ## ✨ Features
+
+          - ✅ **Export syntax support** - Works with `export VAR="value"` format
+          - ✅ **Smart classification** - Automatically detects secrets vs variables
+          - ✅ **Multi-environment** - Production, staging, development
+          - ✅ **Dry-run mode** - Preview changes before uploading
+          - ✅ **Auto-detection** - Repository and environment detection
+          - ✅ **Secure** - Uses GitHub CLI authentication + encryption
+
+          ## 📝 Supported .env Formats
+
+          ```bash
+          # Standard format
+          DATABASE_URL=postgresql://localhost:5432/db
+          API_KEY=sk-1234567890
+
+          # Export format (new!)
+          export DIGITALOCEAN_TOKEN="dop_v1_token"
+          export API_SECRET="secret_value"
+
+          # Mixed format works too
+          ```
+
+          ## 📋 File Checksums
+
+          See `checksums.txt` for SHA256 verification.
+
+          ---
+
+          **⭐ Star this repo if it helped you!**
+        files: |
+          build/*
+          INSTALL.md
+        draft: false
+        prerelease: false
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
