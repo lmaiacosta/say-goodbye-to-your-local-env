@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/fatih/color v1.16.0
 	github.com/google/go-github/v57 v57.0.0
-	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.8.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/oauth2 v0.15.0
 )
 

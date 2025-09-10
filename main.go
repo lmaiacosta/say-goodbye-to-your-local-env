@@ -11,7 +11,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/google/go-github/v57/github"
-	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -63,6 +62,59 @@ func main() {
 	}
 }
 
+// parseEnvFile parses .env files supporting both standard and export syntax
+func parseEnvFile(filename string) (map[string]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	vars := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Handle export syntax: export VAR_NAME="value"
+		if strings.HasPrefix(line, "export ") {
+			line = strings.TrimPrefix(line, "export ")
+		}
+
+		// Find the first = sign
+		eqIndex := strings.Index(line, "=")
+		if eqIndex == -1 {
+			continue // Skip lines without =
+		}
+
+		key := strings.TrimSpace(line[:eqIndex])
+		value := strings.TrimSpace(line[eqIndex+1:])
+
+		// Remove surrounding quotes if present
+		if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+			(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+			value = value[1 : len(value)-1]
+		}
+
+		if key != "" {
+			vars[key] = value
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading file: %v", err)
+	}
+
+	return vars, nil
+}
+
 func run(cmd *cobra.Command, args []string) {
 	color.Cyan("🚀 Envault v%s\n", Version)
 
@@ -106,8 +158,8 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Parse .env file
-	vars, err := godotenv.Read(envFile)
+	// Parse .env file with support for export syntax
+	vars, err := parseEnvFile(envFile)
 	if err != nil {
 		color.Red("❌ Error reading .env file: %v", err)
 		os.Exit(1)
