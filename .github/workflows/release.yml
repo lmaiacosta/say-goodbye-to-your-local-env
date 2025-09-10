@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build binaries
+      run: |
+        mkdir -p dist
+
+        # Build for Linux
+        GOOS=linux GOARCH=amd64 go build -o dist/envault-linux-amd64 .
+        GOOS=linux GOARCH=arm64 go build -o dist/envault-linux-arm64 .
+
+        # Build for macOS
+        GOOS=darwin GOARCH=amd64 go build -o dist/envault-macos-amd64 .
+        GOOS=darwin GOARCH=arm64 go build -o dist/envault-macos-arm64 .
+
+        # Build for Windows
+        GOOS=windows GOARCH=amd64 go build -o dist/envault-windows-amd64.exe .
+        GOOS=windows GOARCH=arm64 go build -o dist/envault-windows-arm64.exe .
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        body: |
+          ## 🚀 Installation
+
+          **Linux (Intel/AMD64):**
+          ```bash
+          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-amd64 -o envault
+          chmod +x envault
+          sudo mv envault /usr/local/bin/
+          ```
+
+          **Linux (ARM64):**
+          ```bash
+          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-arm64 -o envault
+          chmod +x envault
+          sudo mv envault /usr/local/bin/
+          ```
+
+          **macOS (Intel):**
+          ```bash
+          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-macos-amd64 -o envault
+          chmod +x envault
+          sudo mv envault /usr/local/bin/
+          ```
+
+          **macOS (Apple Silicon):**
+          ```bash
+          curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-macos-arm64 -o envault
+          chmod +x envault
+          sudo mv envault /usr/local/bin/
+          ```
+
+          **Windows (PowerShell):**
+          ```powershell
+          Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-windows-amd64.exe" -OutFile "envault.exe"
+          # Move to a directory in your PATH
+          ```
+
+          ## 🎯 Usage
+          ```bash
+          envault -f .env -r owner/repo
+          ```
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
