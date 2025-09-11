@@ -1,6 +1,6 @@
-# Envault Makefile
+# ByeByeEnv Makefile
 
-BINARY_NAME=envault
+BINARY_NAME=byebyeenv
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "2.0.0")
 BUILD_DIR=build
 LDFLAGS=-ldflags "-X main.Version=$(VERSION)"

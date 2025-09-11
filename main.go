@@ -15,7 +15,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const Version = "2.0.0"
+// Version can be set at build time with -ldflags "-X main.Version=x.x.x"
+var Version = "2.0.0"
 
 var (
 	envFile     string
@@ -34,14 +35,14 @@ const (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "envault",
+	Use:   "byebyeenv",
 	Short: "Upload .env variables to GitHub Secrets",
-	Long: `🚀 Envault - Upload .env files to GitHub Actions Secrets
+	Long: `🚀 ByeByeEnv - Upload .env files to GitHub Actions Secrets
 
 Examples:
-  envault -f .env -r owner/repo
-  envault -f .env.staging -r owner/repo -e staging --auto
-  envault -f .env --dry-run
+  byebyeenv -f .env -r owner/repo
+  byebyeenv -f .env.staging -r owner/repo -e staging --auto
+  byebyeenv -f .env --dry-run
 `,
 	Version: Version,
 	Run:     run,
@@ -116,7 +117,7 @@ func parseEnvFile(filename string) (map[string]string, error) {
 }
 
 func run(cmd *cobra.Command, args []string) {
-	color.Cyan("🚀 Envault v%s\n", Version)
+	color.Cyan("🚀 ByeByeEnv v%s\n", Version)
 
 	// Validate environment file
 	if _, err := os.Stat(envFile); os.IsNotExist(err) {

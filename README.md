@@ -1,4 +1,4 @@
-# 🚀 Envault
+# 🚀 ByeByeEnv
 
 **Upload .env files to GitHub Actions Secrets in one command**
 
@@ -11,32 +11,32 @@ Single executable. No dependencies. Works with any .env format.
 
 ### Linux (Intel/AMD64)
 ```bash
-curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-amd64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/byebyeenv-linux-amd64 -o byebyeenv && chmod +x byebyeenv && sudo mv byebyeenv /usr/local/bin/
 ```
 
 ### Linux (ARM64)
 ```bash
-curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-linux-arm64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/byebyeenv-linux-arm64 -o byebyeenv && chmod +x byebyeenv && sudo mv byebyeenv /usr/local/bin/
 ```
 
 ### macOS (Intel)
 ```bash
-curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-darwin-amd64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/byebyeenv-darwin-amd64 -o byebyeenv && chmod +x byebyeenv && sudo mv byebyeenv /usr/local/bin/
 ```
 
 ### macOS (Apple Silicon)
 ```bash
-curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-darwin-arm64 -o envault && chmod +x envault && sudo mv envault /usr/local/bin/
+curl -L https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/byebyeenv-darwin-arm64 -o byebyeenv && chmod +x byebyeenv && sudo mv byebyeenv /usr/local/bin/
 ```
 
 ### Windows (PowerShell as Admin)
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/envault-windows-amd64.exe" -OutFile "$env:ProgramFiles\envault.exe"
+Invoke-WebRequest -Uri "https://github.com/lmaiacosta/say-goodbye-to-your-local-env/releases/latest/download/byebyeenv-windows-amd64.exe" -OutFile "$env:ProgramFiles\byebyeenv.exe"
 ```
 
 ## ✅ Test Installation
 ```bash
-envault --version
+byebyeenv --version
 ```
 
 ## 📋 Setup (One Time Only)
@@ -64,33 +64,33 @@ gh auth login
 ### Basic Usage
 ```bash
 # Upload .env to current repository
-envault -f .env
+byebyeenv -f .env
 
 # Preview first (recommended)
-envault -f .env --dry-run
+byebyeenv -f .env --dry-run
 
 # Specific repository
-envault -f .env -r owner/repo
+byebyeenv -f .env -r owner/repo
 
 # Auto-classify (no questions)
-envault -f .env --auto
+byebyeenv -f .env --auto
 ```
 
 ### Environment Support
 ```bash
 # Production (no prefix)
-envault -f .env.prod -e production
+byebyeenv -f .env.prod -e production
 
 # Staging (STAGING_ prefix)
-envault -f .env.staging -e staging
+byebyeenv -f .env.staging -e staging
 
 # Development (DEVELOPMENT_ prefix)
-envault -f .env.dev -e development
+byebyeenv -f .env.dev -e development
 ```
 
 ## 📝 Supported .env Formats
 
-Envault works with any .env format:
+ByeByeEnv works with any .env format:
 
 ```bash
 # Standard format
@@ -128,38 +128,38 @@ PORT=3000
 
 ```bash
 # First time - see what will happen
-envault -f .env.production --dry-run
+byebyeenv -f .env.production --dry-run
 
 # Upload production secrets (careful!)
-envault -f .env.production -e production
+byebyeenv -f .env.production -e production
 
 # Upload staging with auto-classification
-envault -f .env.staging -e staging --auto
+byebyeenv -f .env.staging -e staging --auto
 
 # Different repository
-envault -f .env -r mycompany/myapp
+byebyeenv -f .env -r mycompany/myapp
 
 # Current directory auto-detection
-envault -f .env
+byebyeenv -f .env
 ```
 
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install envault (see commands above)
+# 1. Install byebyeenv (see commands above)
 
 # 2. Setup GitHub CLI (one time)
 gh auth login
 
 # 3. Upload your .env file
-envault -f .env --dry-run    # Preview first
-envault -f .env              # Upload for real
+byebyeenv -f .env --dry-run    # Preview first
+byebyeenv -f .env              # Upload for real
 ```
 
 ## 📖 All Options
 
 ```
-Usage: envault [flags]
+Usage: byebyeenv [flags]
 
 Flags:
   -f, --env-file string      Path to .env file (required)
@@ -189,7 +189,7 @@ sudo make install
 - Run: `gh auth login`
 
 **"repository not specified"**
-- Use: `envault -f .env -r owner/repo`
+- Use: `byebyeenv -f .env -r owner/repo`
 - Or run in a git repository
 
 ## ⭐ Features

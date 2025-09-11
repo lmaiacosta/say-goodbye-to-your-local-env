@@ -1,4 +1,4 @@
-module envault
+module byebyeenv
 
 go 1.21
 
